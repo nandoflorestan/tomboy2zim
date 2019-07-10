@@ -7,6 +7,8 @@ Convert a Tomboy notebook to Zim format, using Python 3.x.
 Tomboy: https://wiki.gnome.org/Apps/Tomboy
 Zim: https://zim-wiki.org/
 
+This utility has been tested in Python 3.7.
+
 
 Usage
 =====
