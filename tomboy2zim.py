@@ -1,10 +1,7 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
-"""A script for converting Tomboy notes to Zim notes
+#!/usr/bin/env python3
 
-'tomboy2zim.py' is distributed under GNU GPL.
-Copyright (C) 2010 Yongjin Cho <yongjin.cho@gmail.com>
-"""
+"""Convert a Tomboy notebook to Zim format, using Python 3.x."""
+
 import sys
 import os
 import time
@@ -12,22 +9,22 @@ from xml.parsers import expat
 
 
 TOMBOY_DIR = '~/.local/share/tomboy/'
-ZIM_DIR = '~/Notes/'
+ZIM_DIR = '~/Notebooks/'
 
 NOTEBOOK_NAME = 'Tomboy Notes'
 START_NOTE = 'Starts Here'
-
 ENCODING = 'utf-8'
 
 
 class ZimNote:
+
     def __init__(self):
         self.name = ''
         self.text = ''
         self.create_date = ''
         self.mtime = None
 
-    def __unicode__(self):
+    def __str__(self):
         s = 'Content-Type: text/x-zim-wiki\n'
         s += 'Wiki-Format: zim 0.4\n'
         s += 'Creation-Date: %s\n' % self.create_date
@@ -37,11 +34,9 @@ class ZimNote:
         s += self.text
         return s
 
-    def __str__(self):
-        return self.__unicode__().encode(ENCODING)
-
 
 class NoteBuilder:
+
     def __init__(self, parser):
         self.note = ZimNote()
         self.tag_stack = []
@@ -187,50 +182,51 @@ class NoteBuilder:
         s = s.replace(' ', '_')
         return s
 
-def debug():
-    print '-' * 80
-    print note.name
-    print note
-    raw_input()
 
-
-def main(tomboy_dir, zim_dir):
+def _main(tomboy_dir, zim_dir, can_print=False):
     f = open(os.path.join(zim_dir, 'notebook.zim'), 'w+')
-    f.write("""[Notebook]
-name=%s
-home=:%s
-icon=None
-document_root=%s
-slow_fs=False
-version=0.4
-""" % (NOTEBOOK_NAME, START_NOTE, zim_dir))
+    f.write(NOTEBOOK % (NOTEBOOK_NAME, START_NOTE, zim_dir))
     f.close()
 
+    iterations = 0
     for tnote_id in filter(lambda x: x.endswith('.note'), os.listdir(tomboy_dir)):
+        iterations += 1
         parser = expat.ParserCreate()
         builder = NoteBuilder(parser)
 
         tnote_path = os.path.join(tomboy_dir, tnote_id)
-        parser.ParseFile(file(tnote_path))
-        note = builder.get_note()
+        with open(tnote_path, 'rb') as stream_in:
+            parser.ParseFile(stream_in)
+            note = builder.get_note()
 
         znote_path = os.path.join(zim_dir, note.name + '.txt')
-        f = open(znote_path, 'w+')
-        f.write(note.__str__())
-        f.close()
+        with open(znote_path, 'w', encoding=ENCODING) as stream_out:
+            stream_out.write(str(note))
 
         os.utime(znote_path, (note.mtime, note.mtime))
-        #debug()
+        # _debug(note)
 
-if __name__ == '__main__':
+    if can_print:
+        print(f"Success. {iterations} notes converted "
+              f"from {tomboy_dir} to {zim_dir}")
+
+
+def _debug(note):
+    print('-' * 80)
+    print(note.name)
+    print(note)
+    input()
+
+
+def _run_from_shell():
     try:
         tomboy_dir = sys.argv[1]
-    except:
+    except Exception:
         tomboy_dir = os.path.expanduser(TOMBOY_DIR)
 
     try:
         zim_dir = sys.argv[2]
-    except:
+    except Exception:
         zim_dir = os.path.expanduser(ZIM_DIR)
 
     if not os.path.exists(zim_dir):
@@ -239,4 +235,18 @@ if __name__ == '__main__':
         sys.stderr.write("The 'zim_dir' is not a directory\n")
         sys.exit(1)
 
-    main(tomboy_dir, zim_dir)
+    _main(tomboy_dir, zim_dir, can_print=True)
+
+
+NOTEBOOK = """[Notebook]
+name=%s
+home=:%s
+icon=None
+document_root=%s
+slow_fs=False
+version=0.4
+"""
+
+
+if __name__ == '__main__':
+    _run_from_shell()
